@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+#
+# ai-session - AI開発セッション管理ツール
+#
+# AIエージェント(Claude Code / Codex 等)に作業を任せる前に、
+# セッション用の作業ファイル一式を作成する軽量CLI。
+#
+# 使い方:
+#   ai-session start <session-name>   セッションを作成する
+#   ai-session list                   既存セッションを一覧表示する
+#   ai-session help                   ヘルプを表示する
+#
+set -euo pipefail
+
+PROG="ai-session"
+
+# --- リポジトリルート(.ai の親)を特定する ---------------------------------
+find_root() {
+  # git 管理下ならトップレベルを優先
+  if root=$(git rev-parse --show-toplevel 2>/dev/null); then
+    if [ -d "$root/.ai" ]; then
+      printf '%s\n' "$root"
+      return 0
+    fi
+  fi
+  # そうでなければカレントから上へ .ai を探す
+  local dir="$PWD"
+  while [ "$dir" != "/" ]; do
+    if [ -d "$dir/.ai" ]; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+  return 1
+}
+
+usage() {
+  cat <<EOF
+${PROG} - AI開発セッション管理ツール
+
+USAGE:
+  ${PROG} start <session-name>   セッションを作成する
+  ${PROG} list                   既存セッションを一覧表示する
+  ${PROG} help                   このヘルプを表示する
+
+DESCRIPTION:
+  start は .ai/templates/session/ を元に
+  .ai/sessions/<session-name>/ 配下へ作業ファイル一式を作成します:
+    requirements.md  questions.md  design.md
+    tasks.md         test.md       summary.md
+
+  .ai/sessions/ は Git 管理対象外です(.gitignore で除外)。
+
+  作成後は AI エージェントに以下を渡してください:
+    - .ai/prompts/session-workflow.md (ワークフローのルール)
+    - 作成したセッションの requirements.md
+EOF
+}
+
+cmd_start() {
+  local name="${1:-}"
+  if [ -z "$name" ]; then
+    echo "エラー: セッション名を指定してください" >&2
+    echo "  例: ${PROG} start my-feature" >&2
+    exit 1
+  fi
+  case "$name" in
+    */*|.*)
+      echo "エラー: セッション名に '/' や先頭 '.' は使用できません: $name" >&2
+      exit 1
+      ;;
+  esac
+
+  local root
+  if ! root=$(find_root); then
+    echo "エラー: .ai ディレクトリが見つかりません。" >&2
+    echo "  リポジトリ直下(.ai がある場所)で実行してください。" >&2
+    exit 1
+  fi
+
+  local tpl="$root/.ai/templates/session"
+  if [ ! -d "$tpl" ]; then
+    echo "エラー: テンプレートが見つかりません: $tpl" >&2
+    exit 1
+  fi
+
+  local dest="$root/.ai/sessions/$name"
+  if [ -e "$dest" ]; then
+    echo "エラー: セッションは既に存在します: .ai/sessions/$name" >&2
+    exit 1
+  fi
+
+  mkdir -p "$dest"
+  local f
+  for f in "$tpl"/*.md; do
+    cp "$f" "$dest/"
+  done
+
+  echo "セッションを作成しました: .ai/sessions/$name"
+  echo ""
+  echo "作成ファイル:"
+  for f in "$dest"/*.md; do
+    echo "  - .ai/sessions/$name/$(basename "$f")"
+  done
+  echo ""
+  echo "次のステップ:"
+  echo "  1. requirements.md に要件を書く"
+  echo "  2. AI に .ai/prompts/session-workflow.md と requirements.md を渡す"
+  echo "  3. AI が「進める / 質問する」を判断します"
+}
+
+cmd_list() {
+  local root
+  if ! root=$(find_root); then
+    echo "エラー: .ai ディレクトリが見つかりません。" >&2
+    exit 1
+  fi
+  local sdir="$root/.ai/sessions"
+  if [ ! -d "$sdir" ] || [ -z "$(ls -A "$sdir" 2>/dev/null)" ]; then
+    echo "セッションはまだありません。"
+    echo "  作成: ${PROG} start <session-name>"
+    return 0
+  fi
+  echo "セッション一覧 (.ai/sessions/):"
+  local d
+  for d in "$sdir"/*/; do
+    [ -d "$d" ] || continue
+    echo "  - $(basename "$d")"
+  done
+}
+
+main() {
+  local sub="${1:-help}"
+  shift || true
+  case "$sub" in
+    start) cmd_start "$@" ;;
+    list)  cmd_list "$@" ;;
+    help|-h|--help) usage ;;
+    *)
+      echo "不明なコマンド: $sub" >&2
+      echo "" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"
