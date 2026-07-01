@@ -91,3 +91,14 @@ AIは作業を始める前に `requirements.md`（またはユーザーの要件
 要件が十分なときは余計な確認なしにそのまま実装へ進めます。
 
 詳細なルールは [`.ai/prompts/session-workflow.md`](.ai/prompts/session-workflow.md) を参照してください。
+
+## 開発 / テスト
+
+CLI の挙動は依存なしのシェルテストで検証できます。
+
+```bash
+./test/ai-session.test.sh
+```
+
+GitHub Actions（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）で、
+push / pull request 時にこのテストと `shellcheck` が自動実行されます。
