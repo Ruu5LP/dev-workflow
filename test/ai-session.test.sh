@@ -30,7 +30,7 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/.ai/templates/session"
 cp "$REPO_ROOT/.ai/templates/session/"*.md "$WORK/.ai/templates/session/"
-cd "$WORK"
+cd "$WORK" || exit 1
 
 echo "TAP-ish results:"
 
