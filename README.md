@@ -1,3 +1,13 @@
+> [!IMPORTANT]
+> **このリポジトリは [FoundRuu](https://github.com/Ruu5LP/foundruu) に統合されました。**
+> AI開発Workflow・セッション管理の機能は `foundruu` CLI（[npm](https://www.npmjs.com/package/foundruu)）として提供されています。
+>
+> ```bash
+> npm install -g foundruu
+> ```
+>
+> 本リポジトリはアーカイブされており、今後の更新は行われません。
+
 # dev-workflow
 
 Claude Code / Codex などのAI開発エージェント向けの、**軽量なAI開発セッション管理ツール**です。
